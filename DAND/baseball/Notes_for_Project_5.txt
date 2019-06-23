@@ -1,0 +1,18 @@
+Notes for Project 5
+
+Questions about the data?
+    1. What are the variables affecting hall of fame induction?
+        a. What is the mean batting average for hall of fame inductees? For non-HOF players? What is the minimum batting average, minimum number of years played for HOF inductees?
+        b. Is it easier to get in with good batting stats or pitching stats? How difficult is it to get in with just good fielding stats?
+        c. Does a player need to be a good hitter and fielder to get in? Or is it common to get in with good hitting statistics alone?
+            - i.e., what influence do fielding statistics have on induction?
+        
+        
+Strategy:
+    All data from 1969 to the present - Take all position-player Hall of Fame inductees and random sample of non hall of fame position-player inductees (equivalent to number of hall of fame inductees)  and compare statistics. Make histograms for batting average, home runs,  of HOF and non-HOF players. Make scatterplots of batting average vs home runs, make the size of the bubbles based on years played, and make them one color for HOF inductees and another color for non-HOF players.
+    
+    Note: On Base Percentage (aka OBP, On Base Average, OBA) is a measure of how often a batter reaches base. It is approximately equal to Times on Base/Plate appearances. The full formula is OBP = (Hits + Walks + Hit by Pitch) / (At Bats + Walks + Hit by Pitch + Sacrifice Flies).Batters are not charged with an opportunity for sacrifice bunts. May 2, 2015 - courtesy of Baseball-Reference.com - www.baseball-reference.com/bullpen/On_base_percentage
+    
+References:
+    Jayson Stark - ESPN - article "Drawing the Line at 1969": http://www.espn.com/mlb/columns/story?columnist=stark_jayson&id=2471349
+        "1969: Big year. First year of division play and the expanded postseason. Pitcher's mound lowered five inches. Strike zone shrinks. Five-man rotations kicking in." 

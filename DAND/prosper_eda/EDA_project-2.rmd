@@ -1,0 +1,884 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+Prosper Loan Analysis by Travis Dickey
+========================================================
+    
+    ```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# loading package libraries
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(RColorBrewer)
+library(ggthemes)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Load_the_Data}
+# Load the Data
+pld <- read.csv("prosperLoanData.csv")
+```
+
+**Prosper Loan Data**: The data set contains 113,937 loans with 81 variables on each loan, including loan amount, borrower rate (or interest rate), current loan status, borrower income, borrower employment status, borrower credit history, and the latest payment information.
+
+# Univariate Plots Section
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# data dimensions
+dim(pld)
+```
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# structure of 10 variables explored in this analysis
+str(pld[c("CreditGrade", "LoanStatus", "BorrowerRate", "ProsperRating..Alpha.",
+          "BorrowerState", "EmploymentStatus", "CreditScoreRangeLower",
+          "DelinquenciesLast7Years", "DebtToIncomeRatio", "IncomeRange")])
+```
+
+The full dataset contains 81 variables. I will focus on 10 variables. The structure of those variables includes 2 int, 2 num, and 6 factor variables.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# bar chart of Employmentstatuses
+qplot(EmploymentStatus, data = pld,
+      color = I('black'), fill = I('#099DD9'),
+      xlab = "Employment Status",
+      ylab = "Number of Prosper Loans") +
+    ggtitle("Employment Status") +
+    # add color to chart by theme and adjust x-axis labels to be readable
+    theme_economist() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+The vast majority of loans are for employed people, which is no surprise.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# bar chart of BorrowerState
+qplot(BorrowerState, data = pld,
+      color = I('black'), fill = I('#099DD9'),
+      xlab = "Borrower State",
+      ylab = "Number of Prosper Loans") +
+    ggtitle("States where Borrowers Live ") +
+    scale_y_continuous(breaks = seq(0, 15000, 2500)) +
+    theme_economist() +
+    theme(axis.text.x = element_text(angle = 90, 
+                                     vjust = .1, 
+                                     hjust = .1, 
+                                     size = 7))
+```
+
+California, at nearly 15,000, has by far the most loan recipients. Florida, New York, and Texas all follow with about 7,000 recipients. It's no surprise that the most populous states have the most loan recipients.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# bar chart of BorrowerState, log transformed y-axis
+qplot(BorrowerState, data = pld,
+color = I('black'), fill = I('#099DD9'),
+xlab = "Borrower State",
+ylab = "Number of Prosper Loans") +
+    ggtitle("States where Borrowers Live ") +
+    theme_economist() +
+    scale_y_log10(breaks = c(10, 100, 1000, 10000)) +
+    theme(axis.text.x = element_text(angle = 90, 
+                                     vjust = .1, 
+                                     hjust = .1, 
+                                     size = 7))
+```
+
+North Dakota has the least number of loan recipients with less than 100. Maine is next with right at 100.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# bar chart of LoanStatus
+ggplot(aes(x = LoanStatus), data = pld,
+       xlab = "Loan Status",
+       ylab = "Number of Prosper Loans") +
+    scale_y_continuous(limits = c(0, 60000),
+                       breaks = seq(0, 60000, 10000))+
+    geom_bar(color = I('black'), fill = I('#099DD9')) +
+    theme_economist() +
+    theme(axis.text.x = element_text(angle = 90, vjust = .5, hjust = .5)) +
+    ggtitle("Loan Status")
+
+```
+
+The majority of loans are current or completed, with just over 10,000 charged off and about 5,000 defaulted. I'm curious about the characteristics of the chargeoffs and defaulted loans. Are there common features in the creditworthiness of borrowers who end up not repaying the loan? 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# function to create histograms - takes variable and binwidth
+create_hist_c <- function(variable, binwidth = 0.01) {
+return(ggplot(aes_string(x = variable), data = pld) + 
+geom_histogram(binwidth = binwidth,
+color = I('black'), 
+fill = I('#099DD9')) +
+theme_economist())
+}
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# histogram of BorrowerRate
+create_hist_c('BorrowerRate', .01) +
+    xlab("Borrower Rate - Total Dataset") +
+    ylab("Number of Prosper Loans") +
+    scale_x_continuous(limits = c(0, 0.375),
+                       breaks = seq(0, .375, .05)) +
+    ggtitle("Borrower Rate")
+```
+
+Borrower Rate follows a fairly normal distribution with an abnormal jump at about 32%. I wonder what criteria Prosper uses to set the borrower rate.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# histogram for BorrowerRate for borrowers with no income
+qplot(x = BorrowerRate, data = subset(pld, IncomeRange == "$0"),
+      color = I('black'), fill = I('#099DD9'),
+      xlab = "Borrower Rate - Income = $0",
+      ylab = "Number of Prosper Loans") +
+    scale_x_continuous(breaks = seq(0, .375, .05)) +
+    theme_economist() +
+    ggtitle("Rate for Borrowers with $0 Income")
+```
+
+Why would Prosper make loans to people with no income?
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# bar chart for CreditScoreRangeLower for borrowers with no income;
+# for consistency, CreditScoreRangeLower was used for all credit score 
+# calculations;
+qplot(CreditScoreRangeLower, data = subset(pld, IncomeRange == "$0"),
+      binwidth = 20,
+      color = I('black'), fill = I('#099DD9'),
+      xlab = "Credit Score (Lower Range) - Income = $0",
+      ylab = "Number of Prosper Loans", 
+      ylim = c(0, 100)) +
+    theme_economist() +
+    ggtitle("Credit Score - Borrowers with $0 Income")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# summarize credit score for borrowers with no income
+summary(pld$CreditScoreRangeLower[pld$IncomeRange == "$0"])
+```
+
+Credit scores for borrowers with $0 income follows a non-normal distribution with median at 680.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# bar chart for CreditScoreRangeLower for borrowers with $100,000+ income
+qplot(CreditScoreRangeLower, data = subset(pld, IncomeRange == "$100,000+"),
+      binwidth = 20,
+      color = I('black'), fill = I('#099DD9'),
+      xlab = "Credit Score (Lower Range) - Income = $100,000+",
+      ylab = "Number of Prosper Loans",
+      ylim = c(0, 3000)) +
+    theme_economist() +
+    ggtitle("Credit Score - Borrowers $100,000+")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# summarize credit score for borrowers with $100,000+ income
+summary(pld$CreditScoreRangeLower[pld$IncomeRange == "$100,000+"])
+```
+
+Credit score for $100,000+ borrowers follows a generally normal distribution, with median at 700 and inter-quartile range between 680 and 740.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# histogram of CreditScoreRangeLower for all borrowers
+create_hist_c("CreditScoreRangeLower", 20) +
+    xlab("Credit Score (at lower range)") +
+    ylab("Number of Prosper Loans") + 
+    scale_x_continuous(limits = c(475, 900),
+                       breaks = seq(475, 900, 25)) +
+    ggtitle("Credit Score - All Borrowers")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# summarize credit score for all borrowers 
+summary(pld$CreditScoreRangeLower)
+```
+
+The credit score for all borrowers follows a fairly normal distribution with median of 680 and inter-quartile range between 660 and 720.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# histogram for DebtToIncomeRatio
+create_hist_c("DebtToIncomeRatio", .01) +
+    scale_x_continuous(limits = c(-0, 0.75), breaks = seq(-0, 0.75, .1)) +
+    ggtitle("Debt to Income Ratio")
+```
+
+Most borrowers have a debt-to-income-ratio less than 0.4; however, there is a long tail on this chart. It's not visisble here because I limited the x-axis, but some borrowers have as much as 10 times debt to income.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+grid.arrange(ggplot(aes(x=DebtToIncomeRatio), 
+data = pld) +
+geom_histogram() +
+scale_x_log10(),
+ggplot(aes(x=1, y=DebtToIncomeRatio), 
+data = pld) +
+geom_boxplot( ) +scale_y_log10(breaks = c(.01, .1, .35, 1, 10)) , nrow =1)
+```
+
+From the boxplot, we see most borrowers have a debt-to-income-ratio somewhere between .1 and .35. However, the tails extend far away from center, with the lowest near 0 and the highest at 10 times debt-to-income.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# histogram for DelinquenciesLast7Years
+create_hist_c("DelinquenciesLast7Years", 1) +
+xlab("Delinquencies Past 7 Years") +
+ylab("Number of Prosper Loans")  +
+ggtitle("Delinquencies Last 7 Years")
+```
+
+By far, the majority of borrowers have no delinquencies in the past 7 years, but there is a very long tail on this chart, with some borrowers having as many as 100 delinquencies. Let's zoom in.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# log transformed histogram of DelinquenciesLast7Years
+create_hist_c("DelinquenciesLast7Years", .1) +
+    scale_x_log10(breaks = c(1, 3, 10, 25, 50, 100)) +
+    xlab("Delinquencies Past 7 Years (Log10)") +
+    ylab("Number of Prosper Loans")  +
+    ggtitle("Delinquencies Last 7 Years")
+```
+
+
+#### Number of loans to borrowers with 25 or more delinquencies in past 7 years:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots}
+# count of delinquencies greater than 25
+count(subset(pld, DelinquenciesLast7Years > 25))
+```
+It's remarkable that over 5,000 loans were made to borrowers with more than 25 delinquencies in the past 7 years. Why would Prosper make loans to people with such bad credit histories? 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+grid.arrange(ggplot(aes(x=DelinquenciesLast7Years), 
+data = pld) +
+geom_histogram() +
+scale_x_log10(),
+ggplot(aes(x=1, y=DelinquenciesLast7Years), 
+data = pld) +
+geom_boxplot( ) +scale_y_log10(breaks = c(1, 3, 10, 18, 100)) , nrow =1)
+```
+
+From the boxplot, we see the median number of delinquencies for all borrowers is near 10, with inter-quartile range somewhere between 3 and 18. Again, the outliers extend far away from center, with some borrowers having as many as 100 delinquencies. 
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+There are 113,937 loans in the dataset with 81 variables, including borrower rate, borrower credit grade, loan status, borrower income, employment status, credit history, and loan payment information. The dataset contains two variables for borrower credit grade, one through 2008 called "CreditGrade" and another after 2008 called "ProsperRating..Alpha." Both are ordered factor variables with the following levels:
+
+(best) -------------------> (worst)  
+*CreditGrade:* AA, A, B, C, D, E, HR  
+*ProsperRating..Alpha.:* AA, A, B, C, D, E, HR, NC  
+
+### What is/are the main feature(s) of interest in your dataset?
+The main features that I will explore are borrower rate, loan status, income range, and creditworthiness, as determined by Prosper's proprietary rating system.
+
+### What other features in the dataset do you think will help support your \
+investigation into your feature(s) of interest?
+The credit history, credit score, and debt to income ratio likely influence Prosper's overall determination of creditworthiness. However, their exact formula is is not made public, so it may be difficult to determine precisely how they assign loans to a certain credit grade. 
+
+### Did you create any new variables from existing variables in the dataset?
+I created the variables Income_f, CreditGrade_f , ProsperRating_f, which are used to rearrange the order in which the variables of similar names display in plots.
+
+### Of the features you investigated, were there any unusual distributions? \
+Did you perform any operations on the data to tidy, adjust, or change the form \
+of the data? If so, why did you do this?
+I log transformed the right skewed plot for Delinquencies in the Last 7 years. The vast majority of borrowers had no delinquencies. However, log transforming the plot reveals a surprising number of borrowers with many delinquencies. In fact, there were over 5,000 loans made to borrowers who had 25 or more delinquencies in the past 7 years. This data becomes even more clear in the log transformed boxplot of delinquencies, revealing an inter-quartile range of delinquencies somewhere between 3 and 18.
+
+Similarly, I log transformed the right skewed plot for Debt to Income Ratio. The log transormed boxplot of this data reveals that most borrowers have a debt-to-income-ratio somewhere between .1 and .35. However, the tails extend far away from center, with the lowest near 0 and the highest at 10 times debt-to-income.
+
+Finally, I also log transformed the y-axis for the Borrower State plot to get a look at the states who had the fewest number of borrowers.  
+
+# Bivariate Plots Section
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# create variable to order IncomeRange appropriately
+pld$Income_f <- factor(pld$IncomeRange, 
+levels = c("$0", "$1-24,999", "$25,000-49,999",
+"$50,000-74,999", "$75,000-99,999",
+"$100,000+", "Not displayed", 
+"Not employed"))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# creates boxplots - takes x & y variables and dataset
+create_boxplot <- function(var1, var2, data) {
+return(ggplot(aes_string(x = var1, y = var2), data = data) + 
+geom_boxplot() +
+theme_economist())
+}
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# boxplot of Borrower Rate by Income_f through 2008
+g1 <- create_boxplot('Income_f', 'BorrowerRate', 
+subset(pld, CreditGrade != "")) +
+ggtitle("Borrower Rate by Income thru 2008") +
+scale_y_continuous(lim = c(.1, .4),
+breaks = seq(.1, .4, .05)) +
+theme(axis.text.x = element_text(angle = 90)) 
+
+g1
+```
+
+Not much variability in median interest rate across income ranges prior to 2009. The median interest rate decreases only slightly as income increases, and surprisingly, borrowers with no income have a similar interest rate to that of borrowers in the $50,000-74,999 & $75,000-99,999 ranges. Why is that? 
+
+Furthermore, the median borrower rate for each income range is higher than I would have thought. The lowest is over 15%. I wonder what the rates look like after 2008, when the economy went in the tank.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# boxplot of BorrowerRate by Income_f after 2008
+g2 <- create_boxplot("Income_f", "BorrowerRate", 
+subset(pld, CreditGrade == "")) +
+ggtitle("Borrower Rate by Income after 2008") +
+scale_y_continuous(lim = c(.1, .4),
+breaks = seq(.1, .4, .05)) +
+theme(axis.text.x = element_text(angle = 90))
+
+g2
+```
+
+Much more variability in median borrower rate across income ranges after 2008, with a clear decline in median rate as income increases. This is more in line with what one would expect.
+
+### Summary of Borrower Rate by Income thru 2008
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# summarize BorrowerRate by Income_f through 2008
+pld_thru_2008 <- subset(pld, CreditGrade != "")
+# CreditGrade was variable used thru 2008
+by(pld$BorrowerRate, pld$Income_f, summary)
+```
+
+### Summary of Borrower Rate by Income after 2008
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# summary of BorrowerRate by Income_f after 2008
+pld_a_2008 <- subset(pld, CreditGrade == "")
+# CreditGrade set to "" selects data after 2008
+by(pld_a_2008$BorrowerRate, pld_a_2008$Income_f, summary)
+```
+
+Despite the Fed's reduction of the Prime Rate to nearly zero following the 2008 financial crisis, the median borrower rate across income categories generally increases after 2008. The rate especially increases in the low income range. Borrowers earning $1-$24,999 saw a median increase in interest rate of 2.94 percentage points, whereas the $100,000+ borrowers saw a median increase of .09 points.
+
+Surprisingly, borrowers through 2008 with $0 income had a median interest rate lower than the borrowers in the next three income ranges. Their rate fell between that of borrowers in the $50,000-74,999 and $75,000-99,999 ranges. This anomaly corrected after 2008, with the median rate for $0 income borrowers jumping to 28.70%, the highest for all categories.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# create variable to arrange ProsperRating..Alpha. from best to worst
+pld$ProsperRating_f <- factor(pld$ProsperRating..Alpha., 
+                              levels = c("AA", "A", "B", "C", "D", "E", "HR"))
+# ProsperRating..Alpha. is variable used after 2008
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# boxplots of BorrowerRate by ProsperRating_f
+create_boxplot("ProsperRating_f", "BorrowerRate",
+               data = subset(pld, ProsperRating_f != "")) +
+    # ProsperRating_f != "" selects data after 2008
+    ggtitle("Borrower Rate by Credit Grade thru 2008") +
+    scale_y_continuous(lim = c(0, .4))
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# create variable to arrange CreditGrade from best to worst; CreditGrade was
+# variable used thru 2008
+pld$CreditGrade_f <- factor(pld$CreditGrade, 
+                            levels = c("AA", "A", "B", "C",
+                                       "D", "E", "HR", "NC"))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# boxplots of BorrowerRate by CreditGrade_f, data after 2008
+create_boxplot("CreditGrade_f", "BorrowerRate",
+               subset(pld, CreditGrade_f != "")) +
+    ggtitle("Borrower Rate by Credit Grade after 2008") +
+    scale_y_continuous(lim = c(0, .4))
+```
+
+Clearly the borrower rate is tied closely to a borrower's creditworthiness as determined by Prosper. As the rating gets weaker, the median interest rate goes up. I wonder what criteria Prosper uses to determine the credit rating.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# creates scatterplots w/ regression line -- takes x, y, data, & alpha
+create_scat_w_regl <- function(var3, var4, data1, alpha) {
+return(ggplot(aes_string(x = var3, y = var4), data = data1) +
+geom_point(alpha = alpha,
+shape = 21,
+position = "jitter") +
+geom_smooth(method = "lm"))
+}
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# scatterplot of BorrowerRate by CreditScoreRangeLower
+create_scat_w_regl("CreditScoreRangeLower", "BorrowerRate", pld, 1/10) +
+ggtitle("Borrower Rate by Credit Score") +
+scale_x_continuous(limits = c(450, 850),
+breaks = seq(450, 850, 25)) +
+theme_economist() +
+xlab("Credit Score (at lower range)") +
+ylab("Borrower Rate")
+```
+
+### Correlation coefficient:
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+cor(pld$CreditScoreRangeLower, pld$BorrowerRate, use = "complete.obs")
+```
+
+Weak negative correlation between credit score and borrower rate. Certainly more low-rate loans are made for borrowers with high credit scores, but interest rates run the gamut for all credit scores.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# scatterplot of BorrowerRate by DebtToIncomeRatio
+create_scat_w_regl("DebtToIncomeRatio", "BorrowerRate", pld, 1/10) +
+ggtitle("Borrower Rate by Debt to Income Ratio") +
+xlab("Debt to Income Ratio") +
+ylab("Borrower Rate") +
+theme_economist()
+```
+
+Understandably, most loans are made for borrowers with less than 0.75 debt-to-income-ratio. Remarkably, some loans are made (some even with rates in the teens) for borrowers with 5 times debt to income, or more. Let's zoom in to get a closer look at the typical borrower.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# zoomed in scatterplot of BorrowerRate by DebtToIncomeRatio
+create_scat_w_regl("DebtToIncomeRatio", "BorrowerRate", pld, 1/10) +
+    scale_x_continuous(limits = c(0, .75),
+                       breaks = seq(0, .75, .05)) +
+    ggtitle("Borrower Rate by Debt to Income Ratio") +
+    theme_economist() +
+    xlab("Debt to Income Ratio") +
+    ylab("Borrower Rate")
+```
+
+### Correlation coefficient:
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+cor(pld$DebtToIncomeRatio, pld$BorrowerRate, use = "complete.obs")
+```
+
+Almost no correlation between debt-to-income-ratio and borrower rate. Interest rates run the gamut for each ratio.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# scatterplot of BorrowerRate by DelinguenciesLast7Years
+create_scat_w_regl("DelinquenciesLast7Years", "BorrowerRate", pld, 1/10) +
+    ggtitle("Borrower Rate by Delinquencies") +
+    theme_economist() +
+    xlab("Delinquencies Last 7 Years") +
+    ylab("Borrower Rate") +
+    scale_y_continuous(limits = c(0, .4))
+```
+
+### Correlation coefficient:
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+cor(pld$DelinquenciesLast7Years, pld$BorrowerRate, use = "complete.obs")
+```
+
+Very weak correlation between delinquencies and borrower rate. 
+
+As a side note, it is remarkable that Prosper would make so many loans to people 
+more than 25 delinquencies in the past 7 years, especially with some of them at 
+rates below 10%. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# histograms of BorrowerRate faceted across Income_f
+qplot(BorrowerRate, data = pld, binwidth = 0.01, 
+      color = I('black'),
+      fill = I('#099DD9'),
+      xlab = "Borrower Rate",
+      ylab = "Number of Prosper Loans") +
+    scale_x_continuous(limits = c(0, 0.375),
+                       breaks = seq(0, .375, .1)) +
+    ggtitle("Borrower Rate Frequencies by Income Range") +
+    facet_wrap(~Income_f)
+```
+
+The most loans are made for income ranges $25,000-49,999 and $50,000-74,999. The fewest loans are made for borrowers who have no income or are not employed, which is not surprising.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# boxplots of CreditScoreRangeLower by CreditGrade_f (thru 2008)
+cs_by_cg_thru2008 <- create_boxplot("CreditGrade_f", "CreditScoreRangeLower",
+                                    subset(pld, !is.na(CreditGrade_f))) +
+    scale_y_continuous(limits = c(450, 850)) +
+    ggtitle("Credit Score by Credit Grade - thru 2008")
+
+cs_by_cg_thru2008
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# boxplots of CreditScoreRangeLower by ProsperRating_f (after 2008)
+cs_by_cg_a2008 <- create_boxplot("ProsperRating_f", "CreditScoreRangeLower",
+                                 subset(pld, !is.na(ProsperRating_f))) +
+    ggtitle("Credit Score by Credit Grade - after 2008")
+
+cs_by_cg_a2008
+```
+
+Very little variability in credit score by credit grade up through 2008. However, after 2008 we see significantly more variability in credit scores across the credit grades, which reflects what we've already seen with regard to changes in how Prosper determined credit grade beginning in 2009.
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. How did the feature(s) of interest vary with other features in \
+the dataset?
+Prior to 2009, median borrower rate varied only slightly across income ranges, and remarkably, borrowers earning $0 income enjoyed a rate similar to that of borrowers in the $50,000-100,000 dollar range. Prosper changed its rating variable beginning in 2009. Then median rates began to fall more in line with what one would expect, with a clear decrease in borrower rate as income increases. 
+
+As indicated in the boxplots of the relationship between credit grade and borrower rate, it is clear that Prosper sets the borrower rate based on their proprietary credit rating system, which they changed beginning in 2009. To try to understand how Prosper determines the credit rating, I plotted several variables against the borrower rate to see if there were possible correlations. 
+I could not find any obvious correlations. 
+
+After doing some research into how Prosper determines the rating, I learned that their analysis may include hundreds of variables, not all of which may be included in the dataset. Therefore, I shifted my focus to comparing the quality of their rating system up through 2008 and after 2008, which occurs primarily in the multivariate section. 
+
+### Did you observe any interesting relationships between the other features \
+(not the main feature(s) of interest)?
+There is a distinct change in credit scores before and after 2008 when compared across credit grade. Through 2008, Prosper seems to have based the credit grade largely on credit score. After 2008, they changed their method and we begin to see a great deal more variability in the credit scores across credit grade. Therefore, presumably Prosper began to add many more variables to their assessment of credit risk. 
+
+### What was the strongest relationship you found?
+The strongest relationship was borrower rate vs Prosper credit grade. The boxplots indicated a clear increase in median borrower rate as the borrowers' credit grades get worse. 
+
+# Multivariate Plots Section
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# creates scatterplots w/ regression line, colored by Income_f
+# takes x, y, data, & alpha
+create_color_scat_w_regl <- function(var4, var5, data, alpha1) {
+    return(ggplot(aes_string(x = var4, y = var5), data = data) +
+               geom_point(aes(color = Income_f),
+                          alpha = alpha1,
+                          shape = 21,
+                          size = 1/2,
+                          position = "jitter") +
+               geom_smooth(method = "lm"))
+}
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# scatterplot of BorrowerRate by DebtToIncomeRatio colored by Income_f
+create_color_scat_w_regl("DebtToIncomeRatio", "BorrowerRate",
+                         subset(pld, IncomeRange != "Not displayed" &
+                                    IncomeRange != "Not employed"),
+                         0.5) +
+    # use scale_color_brewer for colors
+    scale_color_brewer(type = 'seq', palette = "PuBuGn",
+                       guide = guide_legend(title = 'Income Range',
+                                            override.aes = list(alpha = 1, size = 2))) +
+    # limit x & y axes to 99th percentile of data
+    scale_x_continuous(lim = c(0, quantile(pld$DebtToIncomeRatio, 0.99, 
+                                           na.rm = TRUE))) +
+    scale_y_continuous(lim = c(0, quantile(pld$BorrowerRate, 0.99, 
+                                           na.rm = TRUE))) +
+    ggtitle("Borrwer Rate by Debt to Income Ratio") +
+    xlab("Debt to Income Ratio") +
+    ylab("Borrower Rate")
+```
+
+Again, no strong relationship between borrower rate and debt-to-income-ratio. There seems to be a weak relationship between income range and debt-to-income-ratio, as would be expected. But as for borrower rate, neither income range nor debt-to-income-ratio seem to have a significant influence on the rate Prosper sets.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# scatterplot of BorrowerRate by DebtToIncomeRatio faceted by LoanStatus and
+# colored by IncomeRange_f
+plot_three <- create_color_scat_w_regl("DebtToIncomeRatio", "BorrowerRate",
+                                       subset(pld,
+                                              IncomeRange != "Not displayed" &
+                                                  IncomeRange != "Not employed"),
+                                       0.5) +
+    scale_color_brewer(type = 'seq', palette = "PuBuGn",
+                       guide = guide_legend(title = 'Income Range',
+                                            override.aes = list(alpha = 1, size = 2))) +
+    scale_x_continuous(lim = c(0, quantile(pld$DebtToIncomeRatio, 0.99, 
+                                           na.rm = TRUE))) +
+    scale_y_continuous(lim = c(0, quantile(pld$BorrowerRate, 0.99, 
+                                           na.rm = TRUE))) +
+    ggtitle("Borrower Rate by Debt to Income Ratio and Loan Status") +
+    xlab("Debt to Income Ratio") +
+    ylab("Borrower Rate") +
+    facet_wrap(~LoanStatus)
+
+plot_three
+```
+
+Not income range, nor debt-to-income-ratio, nor borrower rate seem to be good indicators of whether the loan will remain current.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# scatterplot of BorrowerRate by CreditScoreRangeLower colored by Income_f
+ggplot(aes(x = factor(CreditScoreRangeLower), y = BorrowerRate), 
+       data = subset(pld,
+                     IncomeRange != "Not displayed" & 
+                         IncomeRange != "Not employed")) +
+    geom_boxplot(aes(fill = Income_f)) +
+    scale_color_brewer(type = 'seq',
+                       guide = guide_legend(title = 'Income Range')) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    ggtitle("Borrower Rate by Credit Score") +
+    xlab("Credit Score Range (lower)") +
+    ylab("Borrower Rate")
+```
+
+In general, the higher the credit score, the lower the borrower rate. However, there are many outliers to this trend. Furthermore, for borrowers with high credit scores but low income, there is wide variability in interest rate. For example, at credit score 840, borrowers with $0 income have a huge inter-quartile range compared with borrowers from other income categories. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# scatterplot of CreditScoreRangeLower by DebtToIncomeRatio colored by Income_f
+create_color_scat_w_regl("DebtToIncomeRatio", "CreditScoreRangeLower",
+                         subset(pld, IncomeRange != "Not displayed" & 
+                                    IncomeRange != "Not employed"),
+                         0.5) +
+    scale_color_brewer(type = 'seq', palette = "PuBuGn",
+                       guide = guide_legend(title = 'Income Range',
+                                            override.aes = list(alpha = 1, size = 2))) +
+    scale_x_continuous(lim = c(0, quantile(pld$DebtToIncomeRatio, 0.99, 
+                                           na.rm = TRUE))) +
+    ggtitle("Credit Score by Debt to Income Ratio") +
+    xlab("Debt to Income Ratio") +
+    ylab("Credit Score (lower)")
+```
+
+Higher credit scores have a higher concentration of high income borrowers; nevertheless, there are still many high income borrowers with low debt-to-income-ratios who have less than ideal credit scores.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# scatterplots of CreditScoreRangeLower by DebtToIncomeRatio faceted by 
+# CreditGrade_f, colored by Income_f, data through 2008
+ggplot(aes(x = DebtToIncomeRatio, y = CreditScoreRangeLower), 
+       data = subset(pld, IncomeRange != "Not displayed" & 
+                         IncomeRange != "Not employed" & 
+                         !is.na(CreditGrade_f))) +
+    geom_point(aes(color = Income_f), 
+               alpha = 0.5, 
+               size = 1/2, 
+               position = 'jitter') +
+    scale_color_brewer(type = 'seq', palette = "PuBuGn",
+                       guide = guide_legend(title = 'Income Range',
+                                            override.aes = list(alpha = .5, size = 1/2))) +
+    scale_x_continuous(lim = c(0, quantile(pld$DebtToIncomeRatio, 0.99, 
+                                           na.rm = TRUE))) + # remove NA's
+    ggtitle("Credit Score by Debt to Income Ratio and Credit Grade--through 2008") +
+    xlab("Debt to Income Ratio") +
+    ylab("Credit Score (lower)") +
+    facet_wrap(~CreditGrade_f)
+```
+
+Up through 2008, given the clear delineaions at certain credit scores, Prosper's determination of credit grade seemed to be based primarily on credit score.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# scatterplots of CreditScoreRangeLower by DebtToIncomeRatio faceted by
+#ProsperRating_f, colored by Income_f, data after 2008
+create_color_scat_w_regl("DebtToIncomeRatio", "CreditScoreRangeLower",
+subset(pld, IncomeRange != "Not displayed" & 
+IncomeRange != "Not employed" & 
+!is.na(ProsperRating_f)),
+0.5) +
+scale_color_brewer(type = "seq", palette = "PuBuGn",
+guide = guide_legend(title = 'Income Range',
+override.aes = list(alpha = 1, size = 2))) +
+scale_x_continuous(lim = c(0, quantile(pld$DebtToIncomeRatio, 0.99, 
+na.rm = TRUE))) + # remove NA's
+ggtitle("Credit Score by Debt to Income Ratio and Credit Grade--after 2008") +
+    xlab("Debt to Income Ratio") +
+    ylab("Credit Score (lower)") +
+    facet_wrap(~ProsperRating_f)
+```
+
+After 2008, Prosper seems to have developed a more nuanced approach. As expected, high income borrowers with higher credit scores tend to make up the best Prosper ratings, but no longer are there clear delineations by credit score.
+
+Furthermore, as we've seen in previous plots, the correlations between debt-to-income-ratio and credit score are weak at best, with the strongest in this plot being a negative correlation in the "AA" category.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# scatterplots of CreditScoreRangeLower by DebtToIncomeRatio faceted by
+# CreditGrade_f, colored by LoanStatus, data through 2008
+ggplot(aes(x = DebtToIncomeRatio, y = CreditScoreRangeLower), 
+data = subset(pld, !is.na(CreditGrade_f) & 
+LoanStatus == c("Chargedoff", "Completed", 
+"Current", "Defaulted", 
+"FinalPaymentInProgress"))) +
+geom_point(aes(color = LoanStatus), 
+alpha = 0.5, 
+size = 1/2, 
+position = 'jitter') +
+scale_color_brewer(type = 'qual', palette = "Set1", # color palette: Set1
+guide = guide_legend(title = 'Loan Status',
+override.aes = list(alpha = 1, size = 2))) +
+scale_x_continuous(lim = c(0, quantile(pld$DebtToIncomeRatio, 0.99, 
+na.rm = TRUE))) + # remove NA's
+ggtitle("Credit Score by Debt to Income Ratio and Credit Grade--through 2008") +
+    xlab("Debt to Income Ratio") +
+    ylab("Credit Score (lower)") +
+    facet_wrap(~CreditGrade_f)
+```
+
+This chart looks at Loan Status across the various credit grades. It reveals a fairly significant number of chargeoffs and defaults, even in the higher credit grades.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# scatterplots of CreditScoreRangeLower by DebtToIncomeRatio, faceted by
+# ProsperRating_f, colored by LoanStatus, data after 2008
+ggplot(aes(x = DebtToIncomeRatio, y = CreditScoreRangeLower), 
+       data = subset(pld, !is.na(ProsperRating_f) & 
+                         LoanStatus == c("Chargedoff", "Completed", 
+                                         "Current", "Defaulted", 
+                                         "FinalPaymentInProgress"))) +
+    geom_point(aes(color = LoanStatus), 
+               alpha = 0.5, 
+               size = 1/2, 
+               position = 'jitter') +
+    geom_smooth(method = "lm") +
+    scale_color_brewer(type = 'qual', palette = "Set1", direction = -1,
+                       guide = guide_legend(title = 'Loan Status',
+                                            override.aes = list(alpha = 1, size = 2))) +
+    scale_x_continuous(lim = c(0, quantile(pld$DebtToIncomeRatio, 0.99, 
+                                           na.rm = TRUE))) + # remove NA's
+    ggtitle("Credit Score by Debt to Income Ratio and Credit Grade--after 2008") +
+    xlab("Debt to Income Ratio") +
+    ylab("Credit Score (upper)") +
+    facet_wrap(~ProsperRating_f)
+```
+
+The quality of Prosper's risk assessment does seem to improve after 2008. Up through 2008, a fairly significant number of chargeoffs and defaults occur in the higher grade loans. After 2008, the chargeoffs and defaults in grades AA-B appear to be a bit less. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# scatterplot of BorrowerRate by CreditScoreRangeLower, colored by CreditGrade_f
+# data through 2008
+br_by_cs_cg <- ggplot(aes(x = CreditScoreRangeLower, y = BorrowerRate), 
+data = subset(pld, !is.na(CreditGrade_f))) +
+geom_point(aes(color = CreditGrade_f), 
+alpha = 0.5, 
+size = 1, 
+position = 'jitter') +
+geom_smooth(method = "lm") +
+scale_color_brewer(type = 'seq', palette = "PuBuGn", direction = -1,
+guide = guide_legend(title = 'Credit Grade',
+override.aes = list(alpha = 1, size = 2))) +
+scale_x_continuous(limits = c(450, 850)) +
+scale_y_continuous(limits = c(0, .35)) +
+ggtitle("Borrower Rate by Credit Score--through 2008") +
+xlab("Credit Score") +
+ylab("Borrower Rate")
+
+br_by_cs_cg
+```
+
+### Correlation coefficient:
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+cor(pld_thru_2008$CreditScoreRangeLower, 
+pld_thru_2008$BorrowerRate, use = "complete.obs")
+```
+
+This is the strongest correlation we've seen yet, which is understandable given that Prosper apparently based its assessment of credit risk up through 2008 primarily on credit score.
+
+Looking at the colored variable, we see definitive cut scores for credit grade based on credit score up through 2008, while the borrower rate varies significantly within the credit risk levels.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# scatterplot of BorrowerRate by CreditScoreRangeLower, colored by
+# ProsperRating_f, data after 2008
+br_by_cs_cg_a2008 <- ggplot(aes(x = CreditScoreRangeLower, y = BorrowerRate),
+                            data = subset(pld, !is.na(ProsperRating_f))) +
+    geom_point(aes(color = ProsperRating_f), 
+               alpha = 0.5, 
+               size = 1/2, 
+               position = 'jitter') +
+    geom_smooth(method = "lm") +
+    scale_color_brewer(type = 'seq', palette = "PuBuGn", direction = -1,
+                       guide = guide_legend(title = 'Credit Grade',
+                                            override.aes = list(alpha = 1, size = 2))) +
+    scale_x_continuous(limits = c(550, 850)) +
+    ggtitle("Borrower Rate by Credit Score--after 2008") +
+    xlab("Credit Score") +
+    ylab("Borrower Rate")
+
+br_by_cs_cg_a2008
+```
+
+### Correlation coefficient:
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+cor(pld_a_2008$CreditScoreRangeLower, 
+    pld_a_2008$BorrowerRate, use = "complete.obs")
+```
+
+After 2008, the correlation between credit score and borrower rate gets weaker, and the chart colors sort of flip horizontally. Now the borrower rate varies only slightly within the credit risk levels, but the credit score ranges within the levels much more. The definitive cut scores by credit score are no longer there, but borrower rate is more closely tied to credit grade. Also, apparently Prosper stopped making loans to people with credit scores below about 575.
+
+
+### Percentage of Loans by Loan Status:
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# table of percentages of loans by LoanStatus, total dataset
+tbl_total <- table(pld$LoanStatus) 
+ptbl_total <- cbind(tbl_total,round(prop.table(tbl_total)*100,2))
+colnames(ptbl_total) <- c("N", "Percent")
+ptbl_total
+```
+
+Overall, the percentage of chargeoffs is 10.53, with a default rate 4.4, totalling to 14.93% for all chargeoffs and defaults.
+
+### Percentage of Loans by Loan Status through 2008:
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# table of percentages of loans by LoanStatus, data thru 2008
+tbl_thru_2008 <- table(pld_thru_2008$LoanStatus)
+ptbl_thru_2008 <- cbind(tbl_thru_2008,round(prop.table(tbl_thru_2008)*100,2))
+colnames(ptbl_thru_2008) <- c("N", "Percent")
+ptbl_thru_2008
+```
+
+Through 2008, the percentage of chargedoffs was quite high, 22.97%, and those defaulted was 13.85%.
+
+### Percentage of Loans by Loan Status after 2008:
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# table of percentages of loans by LoanStatus, data after 2008
+tbl_a_2008 <- table(pld_a_2008$LoanStatus)
+ptbl_a_2008 <- cbind(tbl_a_2008,round(prop.table(tbl_a_2008)*100,2))
+colnames(ptbl_a_2008) <- c("N", "Percent")
+ptbl_a_2008
+```
+
+After 2008, the percentage of chargeoffs is much lower, 6.29%, with the percentage of loans in default at 1.19%.
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. Were there features that strengthened each other in terms of \
+looking at your feature(s) of interest?
+
+The difference in how Prosper determined credit risk up through 2008 vs. after 2008 became quite clear in this section. Several of the plots highlight clear delineations in credit score when compared across credit grade through 2008, but that delineation disappears after 2008. Furthermore, it appears that Prosper's assessment of credit risk improved when it made the change in 2009. The percentage of loans that end up being chargedoff becomes significantly less. 
+
+### Were there any interesting or surprising interactions between features?
+The most striking figures in this section are the plots that show clear delineation lines up through 2008 for Prosper's credit risk assessment. Credit scores seem to be the primary determination for assignment of a loan to a particular credit risk level. However, after 2008, the delineation lines disappear. 
+
+The colors in the scatterplots comparing borrower rate to credit score, which are colored by Prosper's credit grade, are particularly striking. It seems clear that through 2008, Prosper assigned cut scores for the different credit risk levels based on credit score. However, after 2008, they developed a more nuanced approach, taking more variables into account, and thereby improving their credit risk assessment. 
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the \
+strengths and limitations of your model.
+I did not create any models with my dataset.
+
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_One}
+# BorrowerRate by Income_f, data thru 2008
+g1 + xlab("Income Range") + ylab("Borrower Rate")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# BorrowerRate by Income_f, data after 2008
+g2  + xlab("Income Range") + ylab("Borrower Rate")
+```
+
+### Description One
+These plots show the difference in borrower rate across income range through 2008 and after 2008. There was very little difference in median borrower rate across income ranges through 2008. After 2008, we see a change, with a steady decline in median borrower as income increases.
+
+### Plot Two
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_Two}
+# scatterplots of BorrowerRate by CreditScoreRangeLower,
+# colored by CreditGrade_f (plot 1) and ProsperRating_f (plot 2)
+grid.arrange(br_by_cs_cg, br_by_cs_cg_a2008)
+```
+
+### Description Two
+These charts look at borrower rate by credit score colored by Prosper credit grade. The first chart is for data through 2008. The second one covers data since 2008. These charts clearly show the difference in Prosper assessment of credit risk beginning in 2009. In the first chart, clear delineation lines at certain credit scores mark the categories of credit risk as determined by Prosper. In the second chart, the colors sort of flip horizontally, indicating how the 
+criteria for Prosper's assessment of credit risk changed after 2008. The credit grades include a much wider variety of credit scores, but the borrower rate is much less varied across credit grade. Furthermore, we see a slightly weaker correlation between credit score and borrower rate after 2008.
+
+### Plot Three
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_Three}
+# scatterplots of BorrowerRate by DebtToIncomeRatio, faceted across LoanStatus,
+# colored by Income_f
+plot_three
+```
+
+### Description Three
+
+This chart looks at borrower rate by debt-to-income-ratio, faceted across loan status and colored by income range, with regression lines for each loan status category. The likelihood that a particular loan will default was not a primary area of focus for my analysis. However, this chart is interesting because it suggests that the characteristics of loans that eventually default are widely varied. Neither borrower rate, nor debt-to-income-ratio, nor income range seem to be significant indicators of whether a loan will eventually default. 
+
+------
+    
+    # Reflection
+    
+    The Prosper Loan Dataset tracks nearly 114,000 loans across 81 variables. I began with a basic exploration of
+individual variables, and then I started to explore key questions, particularly how Prosper determines the borrower rate for a given a loan. I had quite a bit of difficulty finding clear correlations between borrowers' credit history and the rates they earned. I also was surprised to find that Prosper was willing to make a large number of loans to borrowers 
+with poor credit histories. Over 5,000 loans were made to borrowers with more than 25 delinquencies in the past 7 years, and prior to 2009, some borrowers had credit scores in the 400's.
+
+Eventually, I discovered that Prosper assesses the credit risk of each loan based on a proprietary method and assigns borrower rate according to that assessment. Furthermore, I discovered that Prosper changed its method of assessment beginning in 2009. Prior to 2009, credit risk was tied very closely with credit score, but that turned out to be a relatively inaccurate assessment of risk. Beginning in 2009, it appears Prosper added a number of other variables to the credit risk calculation and as a result seems to have improved their assessment. The percentage of chargeoffs and defaults after 2008 decreased significantly.
+
+In future study, it would be interesting to see if the improved credit risk assessment holds true over time. It also would be interesting to track the rate of default over the life-cycle of the loan for the various credit risk levels, i.e., to use the data to gauge at what point in the loan cycle the defaults tend to occur. Finally, future exploration into common characteristics of loans that eventually default could help improve the overall assessment of credit risk.  

@@ -1,0 +1,58 @@
+/* Setting font-family and setting background image */
+
+html {
+  font-family: sans-serif;
+  background: url(images/main-logo.jpg) no-repeat center center fixed;
+  -webkit-background-size: cover;
+  -moz-background-size: cover;
+  -o-background-size: cover;
+  background-size: cover;
+}
+
+  /* Styling and positioning main text */
+
+  .main-text {
+    margin-top: 10%;
+    margin-left: 30%;
+    text-align: right;
+    font-family: "futura-pt";
+    font-style: normal;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #fff;
+    text-shadow: 0px 2px 3px #2a2a2a;
+  }
+
+    /* Styling text in sub-classes */
+
+    .title {
+      letter-spacing: .1em;
+    }
+
+    .sub-title {
+      font-size: 16px;
+      line-height: 1em;
+      letter-spacing: .3em;
+    }
+
+    .contact-info {
+      font-size: 16px;
+      line-height: 1.4em;
+      text-transform: none;
+      letter-spacing: .03em;
+    }
+
+    .demo-title {
+      letter-spacing: .1em;
+      padding-top: 30px;
+    }
+
+  /* styling link text */
+
+  a {
+    font-size: 16px;
+    line-height: 1.4em;
+    letter-spacing: .03em;
+    color: #fff;
+    text-decoration: none;
+  }

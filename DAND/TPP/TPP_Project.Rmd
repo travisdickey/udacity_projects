@@ -1,0 +1,86 @@
+---
+title: "TPP_Project"
+author: "Travis Dickey"
+date: "October 8, 2017"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, echo=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+se <- read.csv("stroopdata.csv")
+library(ggplot2)
+library(gridExtra)
+```
+
+## Questions for Investigation
+
+### 1. What is our independent variable? What is our dependent variable?
+The independent variable is the presentation of the words, whether congruent condition or incongruent condition. The dependent variable is the time it takes the subject to identify the color of the ink.
+
+### 2. What is an appropriate set of hypotheses for this task? What kind of statistical test do you expect to perform? Justify your choices.
+Null Hypothesis: The time it takes a subject to identify ink color will be the same for the congruent and incongruent conditions.  
+Alternative Hypothesis: The time it takes a subject to identify ink color will be greater for the incongruent condition than the congruent condition.
+
+* $H_0: \mu = \mu_I$ 
+    + where $H_0$ = null hypothesis, $\mu$ = mean of the congruent condition and $\mu_I$ = the mean of the incongruent condition  
+* $H_a: \mu < \mu_I$
+    + where $H_a$ = alternative hypothesis, $\mu$ = mean of the congruent condition, $\mu_I$ = mean incongruent condition
+
+I expect to perform a one-tailed, paired t-test because this is a controlled experiment following a "within subject design". The test will be one-tailed because we are particularly interested in whether the time to identify ink color will be greater for the incongruent condition.
+
+The paired t-test is the most appropriate test for this data because of a number of factors. First, the samples are dependent, given that the same subjects will take a pre- and post-test. Therefore, a 2-sample t-test would not be appropriate because in that test, the samples must be independent. Second, we don't know the mean, standard deviation, or other such parameters about the general population, so a z-test would not be appropriate. Furthermore, at just 24 subjects, the sample size is not large enough to justify the use of a z-test. Finally, we assume the data is normally distributed, which is appropriate for the paired t-test. However, given that we're performing a 1-tailed t-test, if it turns out the data is not normally distributed, but is instead highly skewed, then we will need to switch to a non-parametric test.
+
+### 3. Report some descriptive statistics regarding this dataset. Include at least one measure of central tendency and at least one measure of variability.
+```{r echo=FALSE}
+summary(se)
+```
+
+###### Standard Deviation - Congruent:
+```{r echo=TRUE}
+sd_cong <- sd(se$Congruent)
+sd_cong
+```
+
+###### Standard Deviation - Incongruent:
+```{r echo=TRUE}
+sd_incong <- sd(se$Incongruent)
+sd_incong
+```
+
+### 4. Provide one or two visualizations that show the distribution of the sample data. Write one or two sentences noting what you observe about the plot or plots.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+grid.arrange(ggplot(aes(x = 1, y = Congruent), data = se) + 
+               geom_boxplot() +
+               scale_y_continuous(limits = c(8, 25)) +
+               ylab("Time (Seconds)") +
+               ggtitle("Congruent Data"),
+               ggplot(aes(x = 1, y = Incongruent), data = se) +
+               geom_boxplot() +
+               scale_y_continuous(limits = c(8, 25)) +
+               ylab("Time (Seconds)") +
+               ggtitle("Incongruent Data"),
+             nrow = 1)
+```
+
+Clearly the time it takes subjects to identify ink color is less in the congruent versus incongruent conditions. From the boxplots we get a visual display of how much lower the median time is for congruent, as well as the fact that even the 3rd quartile is significantly lower than the 1st quartile in the incongruent condition. 
+
+### 5. Now, perform the statistical test and report your results. What is your confidence level and your critical statistic value? Do you reject the null hypothesis or fail to reject it? Come to a conclusion in terms of the experiment task. Did the results match up with your expectations?
+
+```{r echo=TRUE}
+# paired t-test
+ttest <- t.test(se$Congruent,se$Incongruent, paired=TRUE, alternative = "less")
+ttest
+```
+
+
+As expected, results from a dependent samples t-test indicated that subjects identified ink colors in the congruent condition (M = 14.05, SD = 3.56, N = 24) much quicker than in the incongruent condition (M = 21.02, SD = 4.80, N = 24), t(23) = -8.02, p < .001, one-tailed.
+
+The t-critical value is 1.714 for a one-tailed t-test with 23 degrees of freedom at the 95% confidence level. With our t-statistic equal to -8.02, we can reject the null hypothesis, given that the absolute value of the t-statistic is greater than t-critical. 
+
+Similarly, with the P-value, p < .001, significantly less than p = 0.05, we reject the null hypothesis and accept the alternative hypothesis. Thus, based on test results, we can conclude that individuals identify ink colors more slowly when the word indicates a color that does not match the ink color.
