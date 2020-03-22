@@ -9,6 +9,7 @@ tmp*
 tags
 *.cfg
 *Solution*
+*solution*
 *chris*
 
 # Byte-compiled / optimized / DLL files
